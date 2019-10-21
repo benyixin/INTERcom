@@ -6,7 +6,7 @@
 #include "Serverone.h"
 #include "ServeroneDlg.h"
 #include "afxdialogex.h"
-
+#include "MySocket.h"
 #ifdef _DEBUG
 #define new DEBUG_NEW
 #endif
@@ -51,6 +51,10 @@ END_MESSAGE_MAP()
 
 CServeroneDlg::CServeroneDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_SERVERONE_DIALOG, pParent)
+	, m_ip(_T(""))
+	, m_port(2000)
+	, m_date(_T(""))
+	, m_time(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -58,6 +62,12 @@ CServeroneDlg::CServeroneDlg(CWnd* pParent /*=NULL*/)
 void CServeroneDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_CBString(pDX, IDC_COMBO1, m_ip);
+	DDX_Text(pDX, IDC_EDIT2, m_port);
+	DDX_Control(pDX, IDC_COMBO1, m_con_ip);
+	DDX_Text(pDX, IDC_EDIT3, m_date);
+	DDX_Text(pDX, IDC_EDIT4, m_time);
+	DDX_Control(pDX, IDC_LIST1, m_con_list);
 }
 
 BEGIN_MESSAGE_MAP(CServeroneDlg, CDialogEx)
@@ -100,6 +110,72 @@ BOOL CServeroneDlg::OnInitDialog()
 
 	// TODO: 在此添加额外的初始化代码
 
+	update_date_and_time(m_date, m_time);//更新日期和时间
+
+	if (!AfxSocketInit()) {//初始化
+		MessageBox(L"初始化失败", L"提示", MB_OK | MB_ICONSTOP);
+	}
+	update_date_and_time(m_date, m_time);//更新日期和时间
+	m_con_list.AddString(m_date + _T(" ") + m_time + _T(":") + _T("Socket初始化成功！"));
+	
+
+	//获取主机名和可用IP地址
+
+	char hostname[20] = "";
+	int errorcode;
+	if ((errorcode = gethostname(hostname, sizeof(hostname))) != 0) {
+		char char_error[100];
+		_itoa_s(errorcode, char_error, 10);
+		MessageBoxA(this->GetSafeHwnd(), char_error, "errorcode", MB_OK);
+		AfxGetMainWnd()->SendMessage(WM_CLOSE);
+	};
+
+	CString hostname_cstring(hostname);
+	CString record;
+	record.Format(L"当前获取的主机名是： 【 %s 】", hostname_cstring);
+	update_date_and_time(m_date, m_time);//更新日期和时间
+	m_con_list.AddString(m_date + _T(" ") + m_time + _T(":") + record);
+
+	hostent *hn;
+	hn = gethostbyname(hostname);
+	int i = 0;
+	while (hn->h_addr_list[i] != 0) {
+		char *p = inet_ntoa(*(in_addr *)hn->h_addr_list[i++]);
+		wchar_t pw[20];
+		SHAnsiToUnicode(p, pw, 20);
+		CString str;
+		str.Format(L"%s", pw);
+		m_con_ip.AddString(str);
+		record.Format(L"当前主机第 %d 个可用IP地址是： 【 %s 】", i, pw);
+		update_date_and_time(m_date, m_time);//更新日期和时间
+		m_con_list.AddString(m_date + _T(" ") + m_time + _T(":") + record);
+	}
+	if (i == 0) {
+		AfxGetMainWnd()->SendMessage(WM_CLOSE);
+	}
+	UpdateData(false);
+	m_con_ip.SetCurSel(0);
+	UpdateData(true);
+
+	//启动服务器操作
+
+	if (m_ip.IsEmpty())
+	{
+		MessageBox(_T("无服务器Ip地址！"), _T("错误！"), MB_OK | MB_ICONEXCLAMATION); return TRUE;
+	}
+	if (m_port <= 0 || m_port> 65535)
+	{
+		MessageBox(_T("端口值设置错误！"), _T("错误！"), MB_OK | MB_ICONEXCLAMATION); return TRUE;
+	}
+
+	UpdateData(true);
+	if (!m_mysocket.Create(m_port, SOCK_DGRAM, FD_READ, m_ip)) {//以数据报方式创建socket
+		MessageBox(L"Socket套接字创建失败", L"错误", MB_OK | MB_ICONSTOP); return TRUE;
+	};
+	record.Format(L"启动服务器成功！当前主机IP是：【 %s 】，端口号是：【 %u 】！", m_ip, m_port);
+	update_date_and_time(m_date, m_time);//更新日期和时间
+	m_con_list.AddString(m_date + _T(" ") + m_time + _T(":") + record);
+	
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -152,3 +228,10 @@ HCURSOR CServeroneDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+//更新当前的时刻，日期
+void CServeroneDlg::update_date_and_time(CString& date, CString& time)
+{
+	date = CTime::GetCurrentTime().Format(L"%Y/%m/%d");
+	time = CTime::GetCurrentTime().Format("%H:%M:%S");
+	UpdateData(false);
+}

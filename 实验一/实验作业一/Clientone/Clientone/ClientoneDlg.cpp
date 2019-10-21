@@ -51,6 +51,10 @@ END_MESSAGE_MAP()
 
 CClientoneDlg::CClientoneDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(IDD_CLIENTONE_DIALOG, pParent)
+	, m_serverIP(_T(""))
+	, m_serverPort(2000)
+	, m_command(_T(""))
+	, m_serverRe(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 }
@@ -58,12 +62,18 @@ CClientoneDlg::CClientoneDlg(CWnd* pParent /*=NULL*/)
 void CClientoneDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialogEx::DoDataExchange(pDX);
+	DDX_Text(pDX, IDC_EDIT1, m_serverIP);
+	DDX_Text(pDX, IDC_EDIT3, m_serverPort);
+	DDX_Text(pDX, IDC_EDIT2, m_command);
+	DDX_Text(pDX, IDC_EDIT4, m_serverRe);
 }
 
 BEGIN_MESSAGE_MAP(CClientoneDlg, CDialogEx)
 	ON_WM_SYSCOMMAND()
 	ON_WM_PAINT()
 	ON_WM_QUERYDRAGICON()
+	ON_BN_CLICKED(IDOK, &CClientoneDlg::OnBnClickedSend)
+	ON_WM_CLOSE()
 END_MESSAGE_MAP()
 
 
@@ -99,7 +109,20 @@ BOOL CClientoneDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
+	if (!AfxSocketInit()) {
+		MessageBox(L"初始化失败", L"提示", MB_OK | MB_ICONSTOP);
+	}
+	
+	//
+	srand((unsigned)time(NULL));
+	int max = RAND_MAX;
+	int client_port = (int)(rand()*(5000) / max + 2019);
 
+
+	if (!m_mysocket.Create(client_port, SOCK_DGRAM, FD_READ)) {
+		MessageBox(L"Socket套接字创建失败", L"错误", MB_OK | MB_ICONSTOP);
+	};
+		
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
@@ -152,3 +175,36 @@ HCURSOR CClientoneDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
+
+
+void CClientoneDlg::OnBnClickedSend()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	UpdateData(true);	//更新控件对应的变量值
+	if (m_serverIP.IsEmpty())
+	{
+		MessageBox(_T("无服务器Ip地址！"), _T("错误！"), MB_OK | MB_ICONEXCLAMATION); return;
+	}
+	if (m_serverPort <= 0 || m_serverPort> 65535)
+	{
+		MessageBox(_T("无请求命令！"), _T("错误！"), MB_OK | MB_ICONEXCLAMATION); return;
+	}
+	if (m_serverPort <= 0 || m_serverPort> 65535)
+	{
+		MessageBox(_T("端口值不正确！"), _T("错误！"), MB_OK | MB_ICONEXCLAMATION); return;
+	}
+
+	//向服务器发送数据报  UDP方式
+	int flag = m_mysocket.SendToEx(m_command.GetBuffer(), (m_command.GetLength() + 1) * sizeof(WCHAR), m_serverPort, m_serverIP);
+	if (flag == SOCKET_ERROR) {
+		MessageBox(_T("向服务器发送请求失败！"), _T("错误！"), MB_OK | MB_ICONSTOP); return;
+	}
+}
+
+
+void CClientoneDlg::OnClose()
+{
+	// TODO: 在此添加消息处理程序代码和/或调用默认值
+	m_mysocket.Close();
+	CDialogEx::OnClose();
+}

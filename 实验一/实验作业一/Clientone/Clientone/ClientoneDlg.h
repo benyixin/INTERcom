@@ -3,6 +3,7 @@
 //
 
 #pragma once
+#include "MySocket.h"
 
 
 // CClientoneDlg ¶Ô»°¿ò
@@ -31,4 +32,12 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+public:
+	CString m_serverIP;
+	int m_serverPort;
+	CString m_command;
+	CString m_serverRe;
+	MySocket m_mysocket;
+	afx_msg void OnBnClickedSend();
+	afx_msg void OnClose();
 };

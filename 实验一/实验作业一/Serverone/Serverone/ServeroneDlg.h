@@ -3,6 +3,8 @@
 //
 
 #pragma once
+#include "afxwin.h"
+#include "MySocket.h"
 
 
 // CServeroneDlg ¶Ô»°¿ò
@@ -31,4 +33,13 @@ protected:
 	afx_msg void OnPaint();
 	afx_msg HCURSOR OnQueryDragIcon();
 	DECLARE_MESSAGE_MAP()
+public:
+	CString m_ip;
+	int m_port;
+	CComboBox m_con_ip;
+	CString m_date;
+	CString m_time;
+	CListBox m_con_list;
+	MySocket m_mysocket;
+	void update_date_and_time(CString& date, CString& time);
 };
